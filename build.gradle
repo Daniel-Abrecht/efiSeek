@@ -43,8 +43,8 @@ configurations {
 }
 
 dependencies {
-    toCopy 'org.json:json:20200518'      
-    implementation configurations.toCopy    
+    toCopy 'org.json:json:20200518'
+    implementation 'org.json:json:20200518'    
 }
 
 task copyToLib(type: Copy) {
@@ -53,3 +53,10 @@ task copyToLib(type: Copy) {
 }
 
 processResources.dependsOn copyToLib
+compileJava.dependsOn copyToLib
+
+afterEvaluate {
+    if (tasks.findByName('copyDependencies')) {
+        copyDependencies.dependsOn copyToLib
+    }
+}

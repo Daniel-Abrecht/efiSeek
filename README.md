@@ -45,10 +45,31 @@ Sorting smm modules relying on meta information into next folders:
 
 ## Installation
 
+### Windows
+
 Set `GHIDRA_INSTALL_DIR` environment variable to ghidra path.
 
 Start `gradlew.bat`, after the completion of building a copy archive from the `dist` directory to `GHIDRA_HOME_DIR/Extensions/Ghidra/`.
 And turn on this extention in your ghidra.
+
+### macOS
+
+1. Set the `GHIDRA_INSTALL_DIR` environment variable:
+```
+export GHIDRA_INSTALL_DIR=/path/to/your/ghidra
+```
+
+2. Run the gradle wrapper to build the extension:
+```
+./gradlew
+```
+
+3. Copy the generated archive from the `dist` directory to your Ghidra extensions folder:
+```
+cp dist/*.zip $GHIDRA_INSTALL_DIR/Extensions/Ghidra/
+```
+
+4. Open Ghidra and enable the extension in the Project Manager under "File → Install Extensions..."
 
 ## Usage
 

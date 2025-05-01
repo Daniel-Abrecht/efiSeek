@@ -84,7 +84,7 @@ public class Guid {
 			} else if ((rawGuid[i] & 0xff) == 0) {
 				guid += "00";
 			}
-			guid += Integer.toHexString(rawGuid[i] & 0xff);
+			guid += Integer.toHexString(rawGuid[i] & 0xff).toUpperCase();
 		}
 		return guid;
 	}

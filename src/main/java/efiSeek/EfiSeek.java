@@ -45,13 +45,27 @@ import ghidra.program.model.pcode.Varnode;
 import ghidra.program.model.pcode.HighFunctionDBUtil;
 import static ghidra.program.model.data.DataTypeConflictHandler.*;
 
-
-
 import ghidra.util.Msg;
 import ghidra.util.task.TaskMonitor;
 
-
 public class EfiSeek extends EfiUtils {
+	// Constants for commonly used data type paths (sorted alphabetically)
+	private static final String PATH_PI_MM_CIS = "/PiMmCis.h";
+	private static final String PATH_PI_SMM_CIS = "/PiSmmCis.h";
+	private static final String PATH_PROCESSOR_BIND = "/ProcessorBind.h";
+	private static final String PATH_UEFI_APP_ENTRY = "/UefiApplicationEntryPoint.h";
+	private static final String PATH_UEFI_BASE_TYPE = "/UefiBaseType.h";
+	
+	// Constants for commonly used data types (sorted alphabetically)
+	private static final String TYPE_EFI_GUID = PATH_UEFI_BASE_TYPE + "/EFI_GUID";
+	private static final String TYPE_EFI_HANDLE_PTR = PATH_UEFI_BASE_TYPE + "/EFI_HANDLE *";
+	private static final String TYPE_INT64 = PATH_PROCESSOR_BIND + "/INT64";
+	private static final String TYPE_INT64_PTR = PATH_PROCESSOR_BIND + "/INT64 *";
+	private static final String TYPE_MM_HANDLER_ENTRY_POINT = PATH_PI_MM_CIS + "/functions/EFI_MM_HANDLER_ENTRY_POINT";
+	private static final String TYPE_MM_NOTIFY_FN = PATH_PI_MM_CIS + "/functions/EFI_MM_NOTIFY_FN";
+	private static final String TYPE_MODULE_ENTRY_POINT = PATH_UEFI_APP_ENTRY + "/functions/_ModuleEntryPoint";
+	private static final String TYPE_SMM_SYSTEM_TABLE2 = PATH_PI_SMM_CIS + "/EFI_SMM_SYSTEM_TABLE2 *";
+
 	private Memory mem;
 	private Address imageBase;
 	private DataTypeManager uefiHeadersArchive = null;
@@ -204,7 +218,7 @@ public class EfiSeek extends EfiUtils {
 					break;
 				}
 				try {
-					this.defineData(Addr, this.uefiHeadersArchive.getDataType("/UefiBaseType.h/EFI_GUID"),
+					this.defineData(Addr, this.uefiHeadersArchive.getDataType(TYPE_EFI_GUID),
 							this.guids.get(strGuid), null);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -215,8 +229,7 @@ public class EfiSeek extends EfiUtils {
 
 	private void setMain() throws Exception {
 		Address addrEntryPoint = this.getEntryPoint();
-		FunctionDefinition funcProt = (FunctionDefinition) this.uefiHeadersArchive
-				.getDataType("/UefiApplicationEntryPoint.h/functions/_ModuleEntryPoint");
+		FunctionDefinition funcProt = (FunctionDefinition) this.uefiHeadersArchive.getDataType(TYPE_MODULE_ENTRY_POINT);
 		this.createFunctionFormDifinition(addrEntryPoint, funcProt, "_ModuleEntryPoint");
 	}
 
@@ -229,13 +242,12 @@ public class EfiSeek extends EfiUtils {
 		
 		this.varnodeConverter.newVarnode(pCode.getInput(2));
 
-		DataType smstType = this.uefiHeadersArchive.getDataType("/PiSmmCis.h/EFI_SMM_SYSTEM_TABLE2 *");
+		DataType smstType = this.uefiHeadersArchive.getDataType(TYPE_SMM_SYSTEM_TABLE2);
 		if (varnodeConverter.isGlobal()) {
 			this.defineData(varnodeConverter.getGlobalAddress(), smstType, "gSmst" + this.nameCount, null);
 		} else if (varnodeConverter.isLocal()) {
 			this.defineVar(varnodeConverter.getVariable(), smstType, "Smst" + this.nameCount);
 			this.nameCount++;
-			
 		}
 	}
 	
@@ -282,7 +294,7 @@ public class EfiSeek extends EfiUtils {
 		}
 
 		if (interfaceType == null)
-			interfaceType = this.uefiHeadersArchive.getDataType("/ProcessorBind.h/INT64 *");
+			interfaceType = this.uefiHeadersArchive.getDataType(TYPE_INT64_PTR);
 		if (interfaceName == null)
 			interfaceName = "UnknownProtocolGuid_" + guid.toString().substring(0, 8);
 
@@ -315,11 +327,11 @@ public class EfiSeek extends EfiUtils {
 		this.varnodeConverter.newVarnode(pCode.getInput(1));
 
 		if (varnodeConverter.isLocal()) {
-			this.defineVar(varnodeConverter.getVariable(), this.uefiHeadersArchive.getDataType("/UefiBaseType.h/EFI_HANDLE *"), "Handle" + this.nameCount);
+			this.defineVar(varnodeConverter.getVariable(), this.uefiHeadersArchive.getDataType(TYPE_EFI_HANDLE_PTR), "Handle" + this.nameCount);
 			this.nameCount++;
 		} else if (varnodeConverter.isGlobal()) {
 			this.defineData(varnodeConverter.getGlobalAddress(),
-					this.uefiHeadersArchive.getDataType("/UefiBaseType.h/EFI_HANDLE *"), "g" + "Handle" + this.nameCount,
+					this.uefiHeadersArchive.getDataType(TYPE_EFI_HANDLE_PTR), "g" + "Handle" + this.nameCount,
 					null);
 			this.nameCount++;
 		}
@@ -336,7 +348,7 @@ public class EfiSeek extends EfiUtils {
 			Msg.info(this, strGuid);
 		}
 		if (interfaceType == null)
-			interfaceType = this.uefiHeadersArchive.getDataType("/ProcessorBind.h/INT64 *");
+			interfaceType = this.uefiHeadersArchive.getDataType(TYPE_INT64_PTR);
 		if (interfaceName == null)
 			interfaceName = "UnknownProtocolGuid_" + strGuid.substring(0, 8);
 		
@@ -359,7 +371,7 @@ public class EfiSeek extends EfiUtils {
 			}
 			
 			if (interfaceType == null) {
-				interfaceType = this.uefiHeadersArchive.getDataType("/ProcessorBind.h/INT64");
+				interfaceType = this.uefiHeadersArchive.getDataType(TYPE_INT64);
 			}
 			this.defineData(varnodeConverter.getGlobalAddress(), interfaceType, "g" + interfaceName + "_" + this.nameCount,
 					null);
@@ -381,8 +393,7 @@ public class EfiSeek extends EfiUtils {
 
 	private void Reg2(PcodeOpAST pCode) throws Exception {
 				
-		FunctionDefinition funcProt = (FunctionDefinition) this.uefiHeadersArchive
-				.getDataType("/PiSmmCis.h/functions/EFI_SMM_HANDLER_ENTRY_POINT2");
+		FunctionDefinition funcProt = (FunctionDefinition) this.uefiHeadersArchive.getDataType(TYPE_MM_HANDLER_ENTRY_POINT);
 		JSONObject root = this.hwSmi;
 		String funcName = null;
 		String fdefName = null;	
@@ -473,7 +484,7 @@ public class EfiSeek extends EfiUtils {
 		this.varnodeConverter.newVarnode(pCode.getInput(1));
 
 		FunctionDefinition funcProt = (FunctionDefinition) this.uefiHeadersArchive
-				.getDataType("/PiSmmCis.h/functions/EFI_SMM_HANDLER_ENTRY_POINT2");
+				.getDataType(TYPE_MM_HANDLER_ENTRY_POINT);
 		Address funcAddress = null;
 		String funcName = "";
 		
@@ -528,7 +539,7 @@ public class EfiSeek extends EfiUtils {
 
 		if (varnodeConverter.isGlobal()) {
 			this.createFunctionFormDifinition(varnodeConverter.getGlobalAddress(),
-					(FunctionDefinition) this.uefiHeadersArchive.getDataType("/PiMmCis.h/functions/EFI_MM_NOTIFY_FN"),
+					(FunctionDefinition) this.uefiHeadersArchive.getDataType(TYPE_MM_NOTIFY_FN),
 					"notify_" + strGuid.substring(0, 8));
 		}
 
@@ -628,9 +639,9 @@ public class EfiSeek extends EfiUtils {
 			if (name == null) {
 				name = "UnknownProtocolGuid_" + guid.toString().substring(0, 8);
 			}
-			this.defineData(guidAddr, this.uefiHeadersArchive.getDataType("/UefiBaseType.h/EFI_GUID"), name, null);
+			this.defineData(guidAddr, this.uefiHeadersArchive.getDataType(TYPE_EFI_GUID), name, null);
 		} else if (varnodeConverter.isLocal()) {
-			this.defineVar(varnodeConverter.getVariable(), this.uefiHeadersArchive.getDataType("/UefiBaseType.h/EFI_GUID"), "Guid" + this.nameCount);
+			this.defineVar(varnodeConverter.getVariable(), this.uefiHeadersArchive.getDataType(TYPE_EFI_GUID), "Guid" + this.nameCount);
 			this.nameCount++;
 		}
 		return guid;

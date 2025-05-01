@@ -1,0 +1,10 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "ghidraPath": "/opt/homebrew/Caskroom/ghidra/11.3.2-20250415/ghidra_11.3.2_PUBLIC"
+    }
+} 

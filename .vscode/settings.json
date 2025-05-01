@@ -1,0 +1,16 @@
+{
+    "java.project.referencedLibraries": [
+        "${env:GHIDRA_INSTALL_DIR}/Ghidra/Framework/**/*.jar",
+        "${env:GHIDRA_INSTALL_DIR}/Ghidra/Features/**/*.jar",
+        "${env:GHIDRA_INSTALL_DIR}/Ghidra/Debug/**/*.jar",
+        "${env:GHIDRA_INSTALL_DIR}/Ghidra/Processors/**/*.jar",
+        "${config:ghidraPath}/Ghidra/Framework/**/*.jar",
+        "${config:ghidraPath}/Ghidra/Features/**/*.jar",
+        "${config:ghidraPath}/Ghidra/Debug/**/*.jar",
+        "${config:ghidraPath}/Ghidra/Processors/**/*.jar"
+    ],
+    "java.project.sourcePaths": [
+        "src/main/java"
+    ],
+    "java.configuration.updateBuildConfiguration": "automatic"
+} 

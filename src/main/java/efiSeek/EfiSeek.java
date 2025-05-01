@@ -344,7 +344,7 @@ public class EfiSeek extends EfiUtils {
 		if (interfaceType == null)
 			interfaceType = this.uefiHeadersArchive.getDataType("/ProcessorBind.h/INT64 *");
 		if (interfaceName == null)
-			interfaceName = "unknownProtocol_" + strGuid.substring(0, 8);
+			interfaceName = "UnknownProtocolGuid_" + strGuid.substring(0, 8);
 		
 		this.varnodeConverter.newVarnode(pCode.getInput(4));
 		
@@ -642,7 +642,7 @@ public class EfiSeek extends EfiUtils {
 			guid = new Guid(rawGuid);
 			name = this.getLabel(guidAddr);
 			if (name == null) {
-				name = "unknownProtocol_" + guid.toString().substring(0, 8);
+				name = "UnknownProtocolGuid_" + guid.toString().substring(0, 8);
 			}
 			this.defineData(guidAddr, this.uefiHeadersArchive.getDataType("/UefiBaseType.h/EFI_GUID"), name, null);
 		} else if (varnodeConverter.isLocal()) {

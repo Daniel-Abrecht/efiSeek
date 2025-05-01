@@ -219,7 +219,7 @@ public class EfiSeek extends EfiUtils {
 				}
 				try {
 					this.defineData(Addr, this.uefiHeadersArchive.getDataType(TYPE_EFI_GUID),
-							this.guids.get(strGuid), null);
+							this.guids.get(strGuid), strGuid);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

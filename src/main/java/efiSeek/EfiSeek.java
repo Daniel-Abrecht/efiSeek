@@ -260,24 +260,18 @@ public class EfiSeek extends EfiUtils {
 			if (this.guids.containsKey(guid.toString())) {
 				String protocolName = this.guidNameToProtocolName(this.guids.get(guid.toString()));
 				
-				// First try behemot.h (original behavior)
-				interfaceType = this.uefiHeadersArchive.getDataType("/behemot.h/" + protocolName + " *");
+				// Search through all available headers
+				List<DataType> allTypes = new ArrayList<>();
+				this.uefiHeadersArchive.getAllDataTypes(allTypes);
 				
-				// If not found, search through all available headers
-				if (interfaceType == null) {
-					// Get all data types to find which header contains our protocol
-					List<DataType> allTypes = new ArrayList<>();
-					this.uefiHeadersArchive.getAllDataTypes(allTypes);
-					
-					for (DataType type : allTypes) {
-						String catPath = type.getCategoryPath().getPath();
-						// Check if this type is our protocol
-						if (type.getName().equals(protocolName)) {
-							// Found it, construct full path
-							interfaceType = this.uefiHeadersArchive.getDataType(catPath + "/" + protocolName + " *");
-							Msg.info(this, "Found protocol " + protocolName + " in " + catPath);
-							break;
-						}
+				for (DataType type : allTypes) {
+					String catPath = type.getCategoryPath().getPath();
+					// Check if this type is our protocol
+					if (type.getName().equals(protocolName)) {
+						// Found it, construct full path
+						interfaceType = this.uefiHeadersArchive.getDataType(catPath + "/" + protocolName + " *");
+						Msg.info(this, "Found protocol " + protocolName + " in " + catPath);
+						break;
 					}
 				}
 				
@@ -349,23 +343,18 @@ public class EfiSeek extends EfiUtils {
 		this.varnodeConverter.newVarnode(pCode.getInput(4));
 		
 		if (varnodeConverter.isGlobal()) {
-			// First try behemot.h (original behavior)
-			interfaceType = this.uefiHeadersArchive.getDataType("/behemot.h/" + interfaceName);
+			// Search through all available headers
+			List<DataType> allTypes = new ArrayList<>();
+			this.uefiHeadersArchive.getAllDataTypes(allTypes);
 			
-			// If not found, search through all available headers
-			if (interfaceType == null) {
-				List<DataType> allTypes = new ArrayList<>();
-				this.uefiHeadersArchive.getAllDataTypes(allTypes);
-				
-				for (DataType type : allTypes) {
-					String catPath = type.getCategoryPath().getPath();
-					// Check if this type is our interface
-					if (type.getName().equals(interfaceName)) {
-						// Found it, construct full path
-						interfaceType = this.uefiHeadersArchive.getDataType(catPath + "/" + interfaceName);
-						Msg.info(this, "Found interface " + interfaceName + " in " + catPath);
-						break;
-					}
+			for (DataType type : allTypes) {
+				String catPath = type.getCategoryPath().getPath();
+				// Check if this type is our interface
+				if (type.getName().equals(interfaceName)) {
+					// Found it, construct full path
+					interfaceType = this.uefiHeadersArchive.getDataType(catPath + "/" + interfaceName);
+					Msg.info(this, "Found interface " + interfaceName + " in " + catPath);
+					break;
 				}
 			}
 			
@@ -562,23 +551,18 @@ public class EfiSeek extends EfiUtils {
 				fdef = (FunctionSignature)parser.parse(fdefName);
 		}
 		else {
-			// First try behemot.h (original behavior)
-			fdef = (FunctionSignature)this.uefiHeadersArchive.getDataType("/behemot.h/functions/" + fdefName);
+			// Search through all available headers
+			List<DataType> allTypes = new ArrayList<>();
+			this.uefiHeadersArchive.getAllDataTypes(allTypes);
 			
-			// If not found, search through all available headers
-			if (fdef == null) {
-				List<DataType> allTypes = new ArrayList<>();
-				this.uefiHeadersArchive.getAllDataTypes(allTypes);
-				
-				for (DataType type : allTypes) {
-					String catPath = type.getCategoryPath().getPath();
-					// Check if this is a function definition with our name
-					if (type instanceof FunctionDefinition && type.getName().equals(fdefName)) {
-						// Found it
-						fdef = (FunctionSignature)type;
-						Msg.info(this, "Found function " + fdefName + " in " + catPath);
-						break;
-					}
+			for (DataType type : allTypes) {
+				String catPath = type.getCategoryPath().getPath();
+				// Check if this is a function definition with our name
+				if (type instanceof FunctionDefinition && type.getName().equals(fdefName)) {
+					// Found it
+					fdef = (FunctionSignature)type;
+					Msg.info(this, "Found function " + fdefName + " in " + catPath);
+					break;
 				}
 			}
 			

@@ -204,7 +204,7 @@ public class EfiSeek extends EfiUtils {
 					break;
 				}
 				try {
-					this.defineData(Addr, this.uefiHeadersArchive.getDataType("/behemot.h/EFI_GUID"),
+					this.defineData(Addr, this.uefiHeadersArchive.getDataType("/UefiBaseType.h/EFI_GUID"),
 							this.guids.get(strGuid), null);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -216,8 +216,8 @@ public class EfiSeek extends EfiUtils {
 	private void setMain() throws Exception {
 		Address addrEntryPoint = this.getEntryPoint();
 		FunctionDefinition funcProt = (FunctionDefinition) this.uefiHeadersArchive
-				.getDataType("/behemot.h/functions/_ModuleEntryPoint");
-		this.createFunctionFormDifinition(addrEntryPoint, funcProt, "ModuleEntryPoint");
+				.getDataType("/UefiApplicationEntryPoint.h/functions/_ModuleEntryPoint");
+		this.createFunctionFormDifinition(addrEntryPoint, funcProt, "_ModuleEntryPoint");
 	}
 
 	private void getSmstLocation2(PcodeOpAST pCode) throws Exception {
@@ -229,7 +229,7 @@ public class EfiSeek extends EfiUtils {
 		
 		this.varnodeConverter.newVarnode(pCode.getInput(2));
 
-		DataType smstType = this.uefiHeadersArchive.getDataType("/behemot.h/EFI_SMM_SYSTEM_TABLE2 *");
+		DataType smstType = this.uefiHeadersArchive.getDataType("/PiSmmCis.h/EFI_SMM_SYSTEM_TABLE2 *");
 		if (varnodeConverter.isGlobal()) {
 			this.defineData(varnodeConverter.getGlobalAddress(), smstType, "gSmst" + this.nameCount, null);
 		} else if (varnodeConverter.isLocal()) {
@@ -258,17 +258,39 @@ public class EfiSeek extends EfiUtils {
 		if (guid != null) {
 			Msg.info(this, guid.toString());
 			if (this.guids.containsKey(guid.toString())) {
-				interfaceType = this.uefiHeadersArchive.getDataType(
-						"/behemot.h/" + this.guidNameToProtocolName(this.guids.get(guid.toString())) + " *");
-				interfaceName = this.guidNameToProtocolName(this.guids.get(guid.toString()));
+				String protocolName = this.guidNameToProtocolName(this.guids.get(guid.toString()));
+				
+				// First try behemot.h (original behavior)
+				interfaceType = this.uefiHeadersArchive.getDataType("/behemot.h/" + protocolName + " *");
+				
+				// If not found, search through all available headers
+				if (interfaceType == null) {
+					// Get all data types to find which header contains our protocol
+					List<DataType> allTypes = new ArrayList<>();
+					this.uefiHeadersArchive.getAllDataTypes(allTypes);
+					
+					for (DataType type : allTypes) {
+						String catPath = type.getCategoryPath().getPath();
+						// Check if this type is our protocol
+						if (type.getName().equals(protocolName)) {
+							// Found it, construct full path
+							interfaceType = this.uefiHeadersArchive.getDataType(catPath + "/" + protocolName + " *");
+							Msg.info(this, "Found protocol " + protocolName + " in " + catPath);
+							break;
+						}
+					}
+				}
+				
+				interfaceName = protocolName;
 			}
-		} else
+		} else {
 			guid = new Guid("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF");
+		}
 
 		if (interfaceType == null)
-			interfaceType = this.uefiHeadersArchive.getDataType("/behemot.h/INT64 *");
+			interfaceType = this.uefiHeadersArchive.getDataType("/ProcessorBind.h/INT64 *");
 		if (interfaceName == null)
-			interfaceName = "unknownProtocol_" + guid.toString().substring(0, 8);
+			interfaceName = "UnknownProtocolGuid_" + guid.toString().substring(0, 8);
 
 		this.varnodeConverter.newVarnode(pCode.getInput(3));
 		if (varnodeConverter.isGlobal()) {
@@ -299,11 +321,11 @@ public class EfiSeek extends EfiUtils {
 		this.varnodeConverter.newVarnode(pCode.getInput(1));
 
 		if (varnodeConverter.isLocal()) {
-			this.defineVar(varnodeConverter.getVariable(), this.uefiHeadersArchive.getDataType("/behemot.h/EFI_HANDLE *"), "Handle" + this.nameCount);
+			this.defineVar(varnodeConverter.getVariable(), this.uefiHeadersArchive.getDataType("/UefiBaseType.h/EFI_HANDLE *"), "Handle" + this.nameCount);
 			this.nameCount++;
 		} else if (varnodeConverter.isGlobal()) {
 			this.defineData(varnodeConverter.getGlobalAddress(),
-					this.uefiHeadersArchive.getDataType("/behemot.h/EFI_HANDLE *"), "g" + "Handle" + this.nameCount,
+					this.uefiHeadersArchive.getDataType("/UefiBaseType.h/EFI_HANDLE *"), "g" + "Handle" + this.nameCount,
 					null);
 			this.nameCount++;
 		}
@@ -320,25 +342,43 @@ public class EfiSeek extends EfiUtils {
 			Msg.info(this, strGuid);
 		}
 		if (interfaceType == null)
-			interfaceType = this.uefiHeadersArchive.getDataType("/behemot.h/INT64 *");
+			interfaceType = this.uefiHeadersArchive.getDataType("/ProcessorBind.h/INT64 *");
 		if (interfaceName == null)
 			interfaceName = "unknownProtocol_" + strGuid.substring(0, 8);
 		
 		this.varnodeConverter.newVarnode(pCode.getInput(4));
 		
-			if (varnodeConverter.isGlobal()) {
-				interfaceType = this.uefiHeadersArchive.getDataType(
-						"/behemot.h/" + interfaceName);
-				if (interfaceType == null) {
-					interfaceType = this.uefiHeadersArchive.getDataType("/behemot.h/INT64");
+		if (varnodeConverter.isGlobal()) {
+			// First try behemot.h (original behavior)
+			interfaceType = this.uefiHeadersArchive.getDataType("/behemot.h/" + interfaceName);
+			
+			// If not found, search through all available headers
+			if (interfaceType == null) {
+				List<DataType> allTypes = new ArrayList<>();
+				this.uefiHeadersArchive.getAllDataTypes(allTypes);
+				
+				for (DataType type : allTypes) {
+					String catPath = type.getCategoryPath().getPath();
+					// Check if this type is our interface
+					if (type.getName().equals(interfaceName)) {
+						// Found it, construct full path
+						interfaceType = this.uefiHeadersArchive.getDataType(catPath + "/" + interfaceName);
+						Msg.info(this, "Found interface " + interfaceName + " in " + catPath);
+						break;
+					}
 				}
-				this.defineData(varnodeConverter.getGlobalAddress(), interfaceType, "g" + interfaceName + "_" + this.nameCount,
-						null);
-				this.nameCount++;
-			} else if (varnodeConverter.isLocal()) {
-				this.defineVar(varnodeConverter.getVariable(), interfaceType, interfaceName + this.nameCount);
-				this.nameCount++;
 			}
+			
+			if (interfaceType == null) {
+				interfaceType = this.uefiHeadersArchive.getDataType("/ProcessorBind.h/INT64");
+			}
+			this.defineData(varnodeConverter.getGlobalAddress(), interfaceType, "g" + interfaceName + "_" + this.nameCount,
+					null);
+			this.nameCount++;
+		} else if (varnodeConverter.isLocal()) {
+			this.defineVar(varnodeConverter.getVariable(), interfaceType, interfaceName + this.nameCount);
+			this.nameCount++;
+		}
 		
 		Address pCodeAddress = pCode.getSeqnum().getTarget();
 		long pCodeOffset = pCodeAddress.subtract(this.imageBase);
@@ -353,7 +393,7 @@ public class EfiSeek extends EfiUtils {
 	private void Reg2(PcodeOpAST pCode) throws Exception {
 				
 		FunctionDefinition funcProt = (FunctionDefinition) this.uefiHeadersArchive
-				.getDataType("/behemot.h/functions/EFI_SMM_HANDLER_ENTRY_POINT2");
+				.getDataType("/PiSmmCis.h/functions/EFI_SMM_HANDLER_ENTRY_POINT2");
 		JSONObject root = this.hwSmi;
 		String funcName = null;
 		String fdefName = null;	
@@ -444,7 +484,7 @@ public class EfiSeek extends EfiUtils {
 		this.varnodeConverter.newVarnode(pCode.getInput(1));
 
 		FunctionDefinition funcProt = (FunctionDefinition) this.uefiHeadersArchive
-				.getDataType("/behemot.h/functions/EFI_SMM_HANDLER_ENTRY_POINT2");
+				.getDataType("/PiSmmCis.h/functions/EFI_SMM_HANDLER_ENTRY_POINT2");
 		Address funcAddress = null;
 		String funcName = "";
 		
@@ -499,7 +539,7 @@ public class EfiSeek extends EfiUtils {
 
 		if (varnodeConverter.isGlobal()) {
 			this.createFunctionFormDifinition(varnodeConverter.getGlobalAddress(),
-					(FunctionDefinition) this.uefiHeadersArchive.getDataType("/behemot.h/functions/EFI_SMM_NOTIFY_FN"),
+					(FunctionDefinition) this.uefiHeadersArchive.getDataType("/PiMmCis.h/functions/EFI_MM_NOTIFY_FN"),
 					"notify_" + strGuid.substring(0, 8));
 		}
 
@@ -522,12 +562,35 @@ public class EfiSeek extends EfiUtils {
 				fdef = (FunctionSignature)parser.parse(fdefName);
 		}
 		else {
+			// First try behemot.h (original behavior)
 			fdef = (FunctionSignature)this.uefiHeadersArchive.getDataType("/behemot.h/functions/" + fdefName);
+			
+			// If not found, search through all available headers
+			if (fdef == null) {
+				List<DataType> allTypes = new ArrayList<>();
+				this.uefiHeadersArchive.getAllDataTypes(allTypes);
+				
+				for (DataType type : allTypes) {
+					String catPath = type.getCategoryPath().getPath();
+					// Check if this is a function definition with our name
+					if (type instanceof FunctionDefinition && type.getName().equals(fdefName)) {
+						// Found it
+						fdef = (FunctionSignature)type;
+						Msg.info(this, "Found function " + fdefName + " in " + catPath);
+						break;
+					}
+				}
+			}
+			
+			if (fdef == null) {
+				Msg.error(this, "Could not find function definition for " + fdefName);
+				return null;
+			}
 		}
 		
 		correctNumberOfParams = fdef.getArguments().length;
 		if(correctNumberOfParams != pCode.getNumInputs() - 1) {
-			Msg.warn(this, "Wrong number of the parameters for" + fdefName + " func at the address: " + pCode.getSeqnum().getTarget().toString());
+			Msg.warn(this, "Wrong number of the parameters for " + fdefName + " func at the address: " + pCode.getSeqnum().getTarget().toString());
 			Msg.warn(this, "Trying to recover");
 			int transaction = program.startTransaction("Override Signature");
 			boolean commit = false;
@@ -581,9 +644,9 @@ public class EfiSeek extends EfiUtils {
 			if (name == null) {
 				name = "unknownProtocol_" + guid.toString().substring(0, 8);
 			}
-			this.defineData(guidAddr, this.uefiHeadersArchive.getDataType("/behemot.h/EFI_GUID"), name, null);
+			this.defineData(guidAddr, this.uefiHeadersArchive.getDataType("/UefiBaseType.h/EFI_GUID"), name, null);
 		} else if (varnodeConverter.isLocal()) {
-			this.defineVar(varnodeConverter.getVariable(), this.uefiHeadersArchive.getDataType("/behemot.h/EFI_GUID"), "Guid" + this.nameCount);
+			this.defineVar(varnodeConverter.getVariable(), this.uefiHeadersArchive.getDataType("/UefiBaseType.h/EFI_GUID"), "Guid" + this.nameCount);
 			this.nameCount++;
 		}
 		return guid;

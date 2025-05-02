@@ -131,14 +131,16 @@ public class EfiSeek extends EfiUtils {
 
 		String[] tempGuids = guidSrt.split(delims);
 		for (int j = 0; j < tempGuids.length; j += 2) {
-			if (tempGuids[j].compareToIgnoreCase("[EDK]") == 0 || tempGuids[j].compareToIgnoreCase("[AMI]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[Apple]") == 0
+			if (tempGuids[j].compareToIgnoreCase("[EDK]") == 0
+					|| tempGuids[j].compareToIgnoreCase("[AMI]") == 0
+					|| tempGuids[j].compareToIgnoreCase("[APPLE]") == 0
 					|| tempGuids[j].compareToIgnoreCase("[INTEL]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[NEW]") == 0 || tempGuids[j].compareToIgnoreCase("[NEW]") == 0
+					|| tempGuids[j].compareToIgnoreCase("[NEW]") == 0
 					|| tempGuids[j].compareToIgnoreCase("[INSYDE]") == 0
 					|| tempGuids[j].compareToIgnoreCase("[ACER]") == 0
 					|| tempGuids[j].compareToIgnoreCase("[AMI+]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[PHOENIX]") == 0) {
+					|| tempGuids[j].compareToIgnoreCase("[PHOENIX]") == 0
+					|| tempGuids[j].compareToIgnoreCase("[HP]") == 0) {
 				j++;
 			}
 			this.guids.put(tempGuids[j + 1], tempGuids[j]);

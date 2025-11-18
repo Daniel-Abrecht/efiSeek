@@ -99,11 +99,14 @@ public class EfiSeekAnalyzer extends AbstractAnalyzer {
 		short machine = ntHeader.getFileHeader().getMachine();
 		monitor.setIndeterminate(true);
 		switch (machine) {
+		case MachineConstants.IMAGE_FILE_MACHINE_ARM64:
+			this.gdtFileName = "Behemotaa64.gdt";
+			break;
 		case MachineConstants.IMAGE_FILE_MACHINE_AMD64:
-			this.gdtFileName = "tommy_uefi_x64.gdt";
+			this.gdtFileName = "Behemotx64.gdt";
 			break;
 		case MachineConstants.IMAGE_FILE_MACHINE_I386:
-			this.gdtFileName = "tommy_uefi_x86.gdt";
+			this.gdtFileName = "Behemotx32.gdt";
 			break;
 		default:
 			Msg.error(this, "Unknown arch");

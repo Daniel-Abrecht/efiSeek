@@ -52,12 +52,18 @@ import ghidra.util.task.TaskMonitor;
 
 public class EfiSeek extends EfiUtils {
 	// Constants for commonly used data type paths (sorted alphabetically)
-	private static final String PATH_PI_MM_CIS = "/PiMmCis.h";
-	private static final String PATH_PI_SMM_CIS = "/PiSmmCis.h";
-	private static final String PATH_PROCESSOR_BIND = "/ProcessorBind.h";
-	private static final String PATH_UEFI_APP_ENTRY = "/UefiApplicationEntryPoint.h";
-	private static final String PATH_UEFI_BASE_TYPE = "/UefiBaseType.h";
-	
+//	private static final String PATH_PI_MM_CIS = "/PiMmCis.h";
+//	private static final String PATH_PI_SMM_CIS = "/PiSmmCis.h";
+//	private static final String PATH_PROCESSOR_BIND = "/ProcessorBind.h";
+//	private static final String PATH_UEFI_APP_ENTRY = "/UefiApplicationEntryPoint.h";
+//	private static final String PATH_UEFI_BASE_TYPE = "/UefiBaseType.h";
+
+	private static final String PATH_PI_MM_CIS = "/behemot.h";
+	private static final String PATH_PI_SMM_CIS = "/behemot.h";
+	private static final String PATH_PROCESSOR_BIND = "/behemot.h";
+	private static final String PATH_UEFI_APP_ENTRY = "/behemot.h";
+	private static final String PATH_UEFI_BASE_TYPE = "/behemot.h";
+
 	// Constants for commonly used data types (sorted alphabetically)
 	private static final String TYPE_EFI_GUID = PATH_UEFI_BASE_TYPE + "/EFI_GUID";
 	private static final String TYPE_EFI_HANDLE_PTR = PATH_UEFI_BASE_TYPE + "/EFI_HANDLE *";

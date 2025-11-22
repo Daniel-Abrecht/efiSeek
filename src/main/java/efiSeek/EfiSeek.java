@@ -85,7 +85,9 @@ public class EfiSeek extends EfiUtils {
 	private JSONObject meta = new JSONObject();
 	private JSONObject locateProtocol = new JSONObject();
 	private JSONObject openProtocol = new JSONObject();
+	private JSONObject handleProtocol = new JSONObject();
 	private JSONObject installProtocol = new JSONObject();
+	private JSONObject installMultipleProtocol = new JSONObject();
 	private JSONObject interrupts = new JSONObject();
 	private JSONObject childSmi = new JSONObject();
 	private JSONObject swSmi = new JSONObject();
@@ -93,9 +95,16 @@ public class EfiSeek extends EfiUtils {
 	
 	private HashMap<Function, DecompileResults> decompileFunction = new HashMap<>();
 
-	private String[] uefiFuncList = new String[] { "EFI_LOCATE_PROTOCOL", "EFI_SMM_GET_SMST_LOCATION2",
-			"EFI_OPEN_PROTOCOL", "EFI_LOCATE_PROTOCOL", "EFI_SMM_REGISTER_PROTOCOL_NOTIFY", "REGISTER", 
-			"EFI_INSTALL_PROTOCOL_INTERFACE" };
+	private String[] uefiFuncList = new String[] {
+	  "EFI_LOCATE_PROTOCOL",
+	  "EFI_OPEN_PROTOCOL",
+	  "EFI_SMM_GET_SMST_LOCATION2",
+	  "EFI_SMM_REGISTER_PROTOCOL_NOTIFY",
+	  "REGISTER",
+	  "EFI_HANDLE_PROTOCOL",
+	  "EFI_INSTALL_PROTOCOL_INTERFACE",
+	  "EFI_INSTALL_MULTIPLE_PROTOCOL_INTERFACES",
+  };
 
 	public EfiSeek(Program prog, String gdtFileName) {
 		this.currentProgram = prog;
@@ -141,18 +150,8 @@ public class EfiSeek extends EfiUtils {
 
 		String[] tempGuids = guidSrt.split(delims);
 		for (int j = 0; j < tempGuids.length; j += 2) {
-			if (tempGuids[j].compareToIgnoreCase("[EDK]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[AMI]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[APPLE]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[INTEL]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[NEW]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[INSYDE]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[ACER]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[AMI+]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[PHOENIX]") == 0
-					|| tempGuids[j].compareToIgnoreCase("[HP]") == 0) {
+			if (tempGuids[j].startsWith("[") )
 				j++;
-			}
 			this.guids.put(tempGuids[j + 1], tempGuids[j]);
 		}
 	}
@@ -291,6 +290,18 @@ public class EfiSeek extends EfiUtils {
 			this.openProtocol.put(String.valueOf(pCodeOffset), protocol);
 	}
 
+	private void handleProtocol(PcodeOpAST pCode) throws Exception{
+		pCode = this.checkFuncParams(pCode, "EFI_HANDLE_PROTOCOL", 3);
+		if(pCode == null) {
+			return;
+		}
+		Address pCodeAddress = pCode.getSeqnum().getTarget();
+		long pCodeOffset = pCodeAddress.subtract(this.imageBase);
+		JSONObject protocol = getProtocol(pCode, pCodeAddress, 2);
+		if(protocol != null)
+			this.handleProtocol.put(String.valueOf(pCodeOffset), protocol);
+	}
+
 	private JSONObject getProtocol(PcodeOpAST pCode, Address pCodeAddress, int guidArg) throws Exception {	
 		Guid guid = null;
 		guid = this.defineGuid(pCode.getInput(guidArg));
@@ -344,6 +355,83 @@ public class EfiSeek extends EfiUtils {
 		protocol.put("function name", this.getFunctionBefore(pCodeAddress).getName());
 		protocol.put("guid", guid.toString());
 		return protocol;
+	}
+
+	private void installMultipleProtocol(PcodeOpAST pCode) throws Exception {
+		Program program = this.currentProgram;
+		Function func = this.getFunctionBefore(pCode.getParent().getStop());
+		Address addr = pCode.getSeqnum().getTarget();
+
+		this.varnodeConverter.newVarnode(pCode.getInput(1));
+
+		if (varnodeConverter.isLocal()) {
+			this.defineVar(varnodeConverter.getVariable(), this.uefiHeadersArchive.getDataType(TYPE_EFI_HANDLE_PTR), "Handle" + this.nameCount);
+			this.nameCount++;
+		} else if (varnodeConverter.isGlobal()) {
+			this.defineData(varnodeConverter.getGlobalAddress(),
+					this.uefiHeadersArchive.getDataType(TYPE_EFI_HANDLE_PTR), "g" + "Handle" + this.nameCount,
+					null);
+			this.nameCount++;
+		}
+
+		Address pCodeAddress = pCode.getSeqnum().getTarget();
+		long pCodeOffset = pCodeAddress.subtract(this.imageBase);
+
+		for(int i=2,n=pCode.getNumInputs(); i<n; i+=2){
+			Varnode guid_var = pCode.getInput(i);
+			if(guid_var.isConstant() && guid_var.getOffset() == 0)
+				break;
+			Guid guid = defineGuid(pCode.getInput(2));
+			String strGuid = "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF";
+			String interfaceName = null;
+			DataType interfaceType = null;
+
+			if (guid != null) {
+				if (this.guids.containsKey(guid.toString())) {
+					interfaceName = this.guidNameToProtocolName(this.guids.get(guid.toString()));
+				}
+				strGuid = guid.toString();
+				Msg.info(this, strGuid);
+			}
+			if (interfaceType == null)
+				interfaceType = this.uefiHeadersArchive.getDataType(TYPE_INT64_PTR);
+			if (interfaceName == null)
+				interfaceName = "UnknownProtocolGuid_" + strGuid.substring(0, 8);
+			
+			this.varnodeConverter.newVarnode(pCode.getInput(i+1));
+
+			if (varnodeConverter.isGlobal()) {
+				// Search through all available headers
+				List<DataType> allTypes = new ArrayList<>();
+				this.uefiHeadersArchive.getAllDataTypes(allTypes);
+			
+				for (DataType type : allTypes) {
+					String catPath = type.getCategoryPath().getPath();
+					// Check if this type is our interface
+					if (type.getName().equals(interfaceName)) {
+						// Found it, construct full path
+						interfaceType = this.uefiHeadersArchive.getDataType(catPath + "/" + interfaceName);
+						Msg.info(this, "Found interface " + interfaceName + " in " + catPath);
+						break;
+					}
+				}
+				
+				if (interfaceType == null) {
+					interfaceType = this.uefiHeadersArchive.getDataType(TYPE_INT64);
+				}
+				this.defineData(varnodeConverter.getGlobalAddress(), interfaceType, "g" + interfaceName + "_" + this.nameCount, null);
+				this.nameCount++;
+			} else if (varnodeConverter.isLocal()) {
+				this.defineVar(varnodeConverter.getVariable(), interfaceType, interfaceName + this.nameCount);
+				this.nameCount++;
+			}
+
+			JSONObject protocol = new JSONObject();
+			protocol.put("name", interfaceName);
+			protocol.put("function name", this.getFunctionBefore(pCodeAddress).getName());
+			protocol.put("guid", strGuid);
+			this.installMultipleProtocol.put(String.valueOf(pCodeOffset), protocol);
+		}
 	}
 
 	private void installProtocol(PcodeOpAST pCode) throws Exception {
@@ -573,7 +661,7 @@ public class EfiSeek extends EfiUtils {
 		}
 
 	}
-	
+
 	private PcodeOpAST checkFuncParams(PcodeOpAST pCode, String fdefName, Integer correctNumberOfParams) throws ParseException {
 		Program program = this.currentProgram;
 		Function func = this.getFunctionBefore(pCode.getParent().getStop());
@@ -740,10 +828,18 @@ public class EfiSeek extends EfiUtils {
 					Msg.info(this, "Locate Protocol in " + funcName);
 					this.locateProtocol(pCode);
 					break;
-                case ("EFI_OPEN_PROTOCOL"):                                             
-                    Msg.info(this, "Open Protocol in " + funcName);                 
-                    this.openProtocol(pCode);                                       
-                    break;
+				case ("EFI_OPEN_PROTOCOL"):
+					Msg.info(this, "Open Protocol in " + funcName);
+					this.openProtocol(pCode);
+					break;
+				case ("EFI_HANDLE_PROTOCOL"):
+					Msg.info(this, "Handle Protocol in " + funcName);
+					this.handleProtocol(pCode);
+					break;
+				case ("EFI_INSTALL_MULTIPLE_PROTOCOL_INTERFACES"):
+					Msg.info(this, "Install Multiple Protocol in " + funcName);
+					this.installMultipleProtocol(pCode);
+					break;
 				case ("EFI_SMM_GET_SMST_LOCATION2"):
 					Msg.info(this, "EFI_SMM_GET_SMST_LOCATION2 in " + funcName);
 					this.getSmstLocation2(pCode);
@@ -784,7 +880,9 @@ public class EfiSeek extends EfiUtils {
 	private void createMeta() {
 		 this.meta.put("locate protocol", this.locateProtocol);
 		 this.meta.put("open protocol", this.openProtocol);
+		 this.meta.put("handle protocol", this.handleProtocol);
 		 this.meta.put("install protocol", this.installProtocol);
+		 this.meta.put("install multiple protocol", this.installMultipleProtocol);
 		 
 		 this.interrupts.put("child", this.childSmi);
 		 this.interrupts.put("swSmi", this.swSmi);
@@ -808,7 +906,9 @@ public class EfiSeek extends EfiUtils {
 			this.meta = new JSONObject(metaStr);
 			this.locateProtocol = meta.getJSONObject("locate protocol");
 			this.openProtocol = meta.getJSONObject("open protocol");
+			this.handleProtocol = meta.getJSONObject("handle protocol");
 			this.installProtocol = meta.getJSONObject("install protocol");
+			this.installMultipleProtocol = meta.getJSONObject("install multiple protocol");
 			this.interrupts = meta.getJSONObject("interrupts");
 			this.childSmi = interrupts.getJSONObject("child");
 			this.swSmi = interrupts.getJSONObject("swSmi");

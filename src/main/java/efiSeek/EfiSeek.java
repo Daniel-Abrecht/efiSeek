@@ -381,7 +381,7 @@ public class EfiSeek extends EfiUtils {
 			Varnode guid_var = pCode.getInput(i);
 			if(guid_var.isConstant() && guid_var.getOffset() == 0)
 				break;
-			Guid guid = defineGuid(pCode.getInput(2));
+			Guid guid = defineGuid(guid_var);
 			String strGuid = "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF";
 			String interfaceName = null;
 			DataType interfaceType = null;
@@ -430,7 +430,7 @@ public class EfiSeek extends EfiUtils {
 			protocol.put("name", interfaceName);
 			protocol.put("function name", this.getFunctionBefore(pCodeAddress).getName());
 			protocol.put("guid", strGuid);
-			this.installMultipleProtocol.put(String.valueOf(pCodeOffset), protocol);
+			this.installMultipleProtocol.put(String.valueOf(pCodeOffset)+"-"+i, protocol);
 		}
 	}
 

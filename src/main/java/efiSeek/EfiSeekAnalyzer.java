@@ -114,12 +114,12 @@ public class EfiSeekAnalyzer extends AbstractAnalyzer {
 		}
 		FlatProgramAPI flatProgramAPI = new FlatProgramAPI(program);
 		if (program.isLocked() == false) {
-			try {
+			/*try {
 				program.setImageBase(flatProgramAPI.toAddr(0x80000000), true);
 			} catch (AddressOverflowException | LockException | IllegalStateException e) {
 				Msg.error(this, "Problems with installing the base address");
 				e.printStackTrace();
-			}
+			}*/
 		}
 
 		EfiSeek EfiTool = new EfiSeek(program, gdtFileName);

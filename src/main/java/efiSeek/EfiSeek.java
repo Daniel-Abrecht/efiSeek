@@ -400,6 +400,7 @@ public class EfiSeek extends EfiUtils {
 			
 			this.varnodeConverter.newVarnode(pCode.getInput(i+1));
 
+			String interfaceName2 = "EFI_" + interfaceName;
 			if (varnodeConverter.isGlobal()) {
 				// Search through all available headers
 				List<DataType> allTypes = new ArrayList<>();
@@ -408,9 +409,9 @@ public class EfiSeek extends EfiUtils {
 				for (DataType type : allTypes) {
 					String catPath = type.getCategoryPath().getPath();
 					// Check if this type is our interface
-					if (type.getName().equals(interfaceName)) {
+					if (type.getName().equals(interfaceName) || type.getName().equals(interfaceName2)) {
 						// Found it, construct full path
-						interfaceType = this.uefiHeadersArchive.getDataType(catPath + "/" + interfaceName);
+						interfaceType = this.uefiHeadersArchive.getDataType(catPath + "/" + type.getName());
 						Msg.info(this, "Found interface " + interfaceName + " in " + catPath);
 						break;
 					}
